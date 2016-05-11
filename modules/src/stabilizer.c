@@ -82,6 +82,7 @@ static int mode;
 
 static uint16_t limitThrust(int32_t value);
 
+xSemaphoreHandle(modeGatekeeper) = 0;
 static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
@@ -89,9 +90,15 @@ static void stabilizerTask(void* param)
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
   lastWakeTime = xTaskGetTickCount ();
+  int modeLocal = 0;
   while(1) {
 	  	vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
-	  	if(mode == 1) {
+	  	if(xSemaphoreTake(modeGatekeeper, M2T(1))) {
+	  		modeLocal = mode;
+	  		xSemaphoreGive(modeGatekeeper);
+	  	}
+
+	  	if(modeLocal == 1) {
 	  	motorPowerM2 = limitThrust(fabs(32000*30/180.0));
 	  	motorsSetRatio(MOTOR_M2, motorPowerM2);
         motorsSetRatio(MOTOR_M1, 0);
@@ -103,7 +110,26 @@ static void stabilizerTask(void* param)
    }
 }
 
+/*static void stabilizerTask(void* param)
+{
+  uint32_t lastWakeTime;
 
+  //Wait for the system to be fully started to start stabilization loop
+  systemWaitStart();
+  lastWakeTime = xTaskGetTickCount ();
+  while(1) {
+	  	vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
+	    imu9Read(&gyro, &acc, &mag);
+
+	    if (imu6IsCalibrated()) {
+	    	sensfusion6UpdateQ(gyro.x, gyro.y, gyro.z, acc.x, acc.y, acc.z, ATTITUDE_UPDATE_DT);
+	    	sensfusion6GetEulerRPY(&eulerRollActual, &eulerPitchActual, &eulerYawActual);
+
+
+
+	  	}
+   }
+}*/
 
 static void modeswitchTask(void* param)
 {
@@ -112,7 +138,11 @@ static void modeswitchTask(void* param)
   while(1)
   {
 	  vTaskDelay(M2T(5000));
-	  mode = !mode;
+	  if(xSemaphoreTake(modeGatekeeper, M2T(1))){
+		  mode = !mode;
+		  xSemaphoreGive(modeGatekeeper);
+	  }
+
   }
 }
 
@@ -126,6 +156,7 @@ void stabilizerInit(void)
   sensfusion6Init();
   attitudeControllerInit();
   mode = 0;
+  modeGatekeeper = xSemaphoreCreateMutex();
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
   xTaskCreate(modeswitchTask, MODESWITCH_TASK_NAME,
