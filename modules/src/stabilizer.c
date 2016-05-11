@@ -78,11 +78,11 @@ uint32_t motorPowerM3;  // Motor 3 power output (16bit value used: 0 - 65535)
 uint32_t motorPowerM4;  // Motor 4 power output (16bit value used: 0 - 65535)
 
 static bool isInit;
-
+static int mode;
 
 static uint16_t limitThrust(int32_t value);
 
-static void stabilizerTask2(void* param)
+static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
 
@@ -91,29 +91,28 @@ static void stabilizerTask2(void* param)
   lastWakeTime = xTaskGetTickCount ();
   while(1) {
 	  	vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
+	  	if(mode == 1) {
 	  	motorPowerM2 = limitThrust(fabs(32000*30/180.0));
 	  	motorsSetRatio(MOTOR_M2, motorPowerM2);
+        motorsSetRatio(MOTOR_M1, 0);
+	  	}else {
+	  	motorPowerM1 = limitThrust(fabs(32000*20/180.0));
+        motorsSetRatio(MOTOR_M1, motorPowerM1);
+	  	motorsSetRatio(MOTOR_M2, 0);
+	  	}
    }
 }
 
 
 
-
-static void stabilizerTask(void* param)
+static void modeswitchTask(void* param)
 {
-  uint32_t lastWakeTime;
-
-  vTaskSetApplicationTaskTag(0, (void*)TASK_STABILIZER_ID_NBR);
-
-  //Wait for the system to be fully started to start stabilization loop
-  systemWaitStart();
-  lastWakeTime = xTaskGetTickCount ();
+	systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
 
   while(1)
   {
-    vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
-        motorPowerM1 = limitThrust(fabs(32000*20/180.0));
-        motorsSetRatio(MOTOR_M1, motorPowerM1);
+	  vTaskDelay(M2T(5000));
+	  mode = !mode;
   }
 }
 
@@ -126,11 +125,11 @@ void stabilizerInit(void)
   imu6Init();
   sensfusion6Init();
   attitudeControllerInit();
-
+  mode = 0;
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
-  xTaskCreate(stabilizerTask2, STABILIZER_TASK_NAME2,
-                STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI2, NULL);
+  xTaskCreate(modeswitchTask, MODESWITCH_TASK_NAME,
+                MODESWITCH_TASK_STACKSIZE, NULL, MODESWITCH_TASK_PRI, NULL);
 
   isInit = true;
 }
