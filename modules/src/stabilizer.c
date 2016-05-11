@@ -23,10 +23,6 @@
  *
  *
  */
-
-// Ett annat test av Anton
-
-
 #include <math.h>
 
 #include "FreeRTOS.h"
@@ -86,47 +82,38 @@ static bool isInit;
 
 static uint16_t limitThrust(int32_t value);
 
+static void stabilizerTask2(void* param)
+{
+  uint32_t lastWakeTime;
+
+  //Wait for the system to be fully started to start stabilization loop
+  systemWaitStart();
+  lastWakeTime = xTaskGetTickCount ();
+  while(1) {
+	  	vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
+	  	motorPowerM2 = limitThrust(fabs(32000*30/180.0));
+	  	motorsSetRatio(MOTOR_M2, motorPowerM2);
+   }
+}
+
+
+
+
 static void stabilizerTask(void* param)
 {
-  uint32_t attitudeCounter = 0;
   uint32_t lastWakeTime;
 
   vTaskSetApplicationTaskTag(0, (void*)TASK_STABILIZER_ID_NBR);
 
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
-
   lastWakeTime = xTaskGetTickCount ();
 
   while(1)
   {
     vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
-
-    // Magnetometer not yet used more then for logging.
-    imu9Read(&gyro, &acc, &mag);
-
-    if (imu6IsCalibrated())
-    {
-      // 250HZ
-      if (++attitudeCounter >= ATTITUDE_UPDATE_RATE_DIVIDER)
-      {
-        sensfusion6UpdateQ(gyro.x, gyro.y, gyro.z, acc.x, acc.y, acc.z, ATTITUDE_UPDATE_DT);
-        sensfusion6GetEulerRPY(&eulerRollActual, &eulerPitchActual, &eulerYawActual);
-
-        // Set motors depending on the euler angles
-        motorPowerM1 = limitThrust(fabs(32000*eulerYawActual/180.0));
-        motorPowerM2 = limitThrust(fabs(32000*eulerPitchActual/180.0));
-        motorPowerM3 = limitThrust(fabs(32000*eulerRollActual/180.0));
-        motorPowerM4 = limitThrust(fabs(32000*eulerYawActual/180.0));
-        
+        motorPowerM1 = limitThrust(fabs(32000*20/180.0));
         motorsSetRatio(MOTOR_M1, motorPowerM1);
-        motorsSetRatio(MOTOR_M2, motorPowerM2);
-        motorsSetRatio(MOTOR_M3, motorPowerM3);
-        motorsSetRatio(MOTOR_M4, motorPowerM4);
-
-        attitudeCounter = 0;
-      }
-    }
   }
 }
 
@@ -142,6 +129,8 @@ void stabilizerInit(void)
 
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
+  xTaskCreate(stabilizerTask2, STABILIZER_TASK_NAME2,
+                STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI2, NULL);
 
   isInit = true;
 }

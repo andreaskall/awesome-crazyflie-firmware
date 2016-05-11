@@ -71,6 +71,7 @@
 
 // Task priorities. Higher number higher priority
 #define STABILIZER_TASK_PRI     4
+#define STABILIZER_TASK_PRI2    5
 #define ADC_TASK_PRI            3
 #define SYSTEM_TASK_PRI         2
 #define CRTP_TX_TASK_PRI        2
@@ -111,6 +112,7 @@
 #define MEM_TASK_NAME           "MEM"
 #define PARAM_TASK_NAME         "PARAM"
 #define STABILIZER_TASK_NAME    "STABILIZER"
+#define STABILIZER_TASK_NAME2    "STABILIZER2"
 #define NRF24LINK_TASK_NAME     "NRF24LINK"
 #define ESKYLINK_TASK_NAME      "ESKYLINK"
 #define SYSLINK_TASK_NAME       "SYSLINK"
