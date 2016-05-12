@@ -196,16 +196,25 @@ static uint16_t limitThrust(int32_t value)
   return limitUint16(value);
 }
 
-/* Perform a matrix multiplication; C = A*B.
-        A is of size n*p
-        B is of size p*q
-        C is of size n*q */
-void matrixMultiply(double A[2][2], double B[2][2], double C[2][2], int n, int p, int q) {
+/* Perform matrix multiplication in the LQ feedback Kx = K*x. */
+void feedbackMultiply(double K[4][6], double x[6][1], double Kx[4][1]) {
     int i,j,k;
-    for (i=0; i<n; i++) {
-        for (j=0; j<q; j++) {
-            for (k=0; k<p; k++) {
-                C[i][j] += A[i][k] * B[k][j];
+    for (i=0; i<4; i++) {
+        for (j=0; j<1; j++) {
+            for (k=0; k<6; k++) {
+                Kx[i][j] += K[i][k] * x[k][j];
+            }
+        }
+    }
+}
+
+/* Perform matrix multiplication for the reference gain Krr = Kr*r. */
+void referenceMultiply(double Kr[3][3], double r[3][1], double Krr[3][1]) {
+    int i,j,k;
+    for (i=0; i<3; i++) {
+        for (j=0; j<1; j++) {
+            for (k=0; k<3; k++) {
+                Krr[i][j] += Kr[i][k] * r[k][j];
             }
         }
     }
