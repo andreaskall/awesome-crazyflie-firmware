@@ -196,6 +196,21 @@ static uint16_t limitThrust(int32_t value)
   return limitUint16(value);
 }
 
+/* Perform a matrix multiplication; C = A*B.
+        A is of size n*p
+        B is of size p*q
+        C is of size n*q */
+void matrixMultiply(double A[2][2], double B[2][2], double C[2][2], int n, int p, int q) {
+    int i,j,k;
+    for (i=0; i<n; i++) {
+        for (j=0; j<q; j++) {
+            for (k=0; k<p; k++) {
+                C[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+}
+
 LOG_GROUP_START(stabilizer)
 LOG_ADD(LOG_FLOAT, roll, &eulerRollActual)
 LOG_ADD(LOG_FLOAT, pitch, &eulerPitchActual)
