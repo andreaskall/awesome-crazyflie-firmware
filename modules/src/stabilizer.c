@@ -92,8 +92,8 @@ static int mode;
 static float referenceGlobal[3];
 
 static uint16_t limitThrust(int32_t value);
-void feedbackMultiply(float K[4][6], float x[6][1], float Kx[4][1]);
-void referenceMultiply(float Kr[4][3], float r[3][1], float Krr[4][1]);
+void feedbackMultiply(float K[4][6], float x[6], float Kx[4]);
+void referenceMultiply(float Kr[4][3], float r[3], float Krr[4]);
 
 xSemaphoreHandle(modeGatekeeper) = 0;
 xSemaphoreHandle(referenceGatekeeper) = 0;
@@ -268,25 +268,21 @@ static uint16_t limitThrust(int32_t value)
 }
 
 /* Perform matrix multiplication in the LQ feedback Kx = K*x. */
-void feedbackMultiply(float K[4][6], float x[6][1], float Kx[4][1]) {
-    int i,j,k;
+void feedbackMultiply(float K[4][6], float x[6], float Kx[4]) {
+    int i,k;
     for (i=0; i<4; i++) {
-        for (j=0; j<1; j++) {
-            for (k=0; k<6; k++) {
-                Kx[i][j] += K[i][k] * x[k][j];
-            }
-        }
+    	for (k=0; k<6; k++) {
+			Kx[i] += K[i][k] * x[k];
+		}
     }
 }
 
 /* Perform matrix multiplication for the reference gain Krr = Kr*r. */
-void referenceMultiply(float Kr[4][3], float r[3][1], float Krr[4][1]) {
-    int i,j,k;
+void referenceMultiply(float Kr[4][3], float r[3], float Krr[4]) {
+    int i,k;
     for (i=0; i<4; i++) {
-        for (j=0; j<1; j++) {
-            for (k=0; k<3; k++) {
-                Krr[i][j] += Kr[i][k] * r[k][j];
-            }
+        for (k=0; k<3; k++) {
+            Krr[i] += Kr[i][k] * r[k];
         }
     }
 }
