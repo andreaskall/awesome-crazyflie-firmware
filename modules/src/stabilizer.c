@@ -91,6 +91,9 @@ static bool isInit;
 static int mode;
 static float referenceGlobal[3];
 static float thrustArray[4] = {0,0,0,0};
+static float states[6] = {0,0,0,0,0,0};
+static float Kx[4] = {0,0,0,0};
+static float Krr[4] = {0,0,0,0};
 
 static uint16_t limitThrust(int32_t value);
 void feedbackMultiply(float K[4][6], float x[6], float Kx[4]);
@@ -131,9 +134,6 @@ xSemaphoreHandle(referenceGatekeeper) = 0;
 static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
-  static float states[6] = {0,0,0,0,0,0};
-  static float Kx[4] = {0,0,0,0};
-  static float Krr[4] = {0,0,0,0};
   static float referenceLocal[3] = {0,0,0};
   static float K[4][6] = {
 		  {-15.8114, -0.0561, -15.8114, -0.0569, 0.0050, 0.5000},
@@ -271,6 +271,7 @@ static uint16_t limitThrust(int32_t value)
 void feedbackMultiply(float K[4][6], float x[6], float Kx[4]) {
     int i,k;
     for (i=0; i<4; i++) {
+    	Kx[i] = 0;
     	for (k=0; k<6; k++) {
 			Kx[i] += K[i][k] * x[k];
 		}
@@ -281,6 +282,7 @@ void feedbackMultiply(float K[4][6], float x[6], float Kx[4]) {
 void referenceMultiply(float Kr[4][3], float r[3], float Krr[4]) {
     int i,k;
     for (i=0; i<4; i++) {
+    	Krr[i] = 0;
         for (k=0; k<3; k++) {
             Krr[i] += Kr[i][k] * r[k];
         }
@@ -325,3 +327,18 @@ LOG_ADD(LOG_FLOAT, t2, &thrustArray[1])
 LOG_ADD(LOG_FLOAT, t3, &thrustArray[2])
 LOG_ADD(LOG_FLOAT, t4, &thrustArray[3])
 LOG_GROUP_STOP(thrustArray)
+
+LOG_GROUP_START(Kr)
+LOG_ADD(LOG_FLOAT, t1, &Krr[0])
+LOG_ADD(LOG_FLOAT, t2, &Krr[1])
+LOG_ADD(LOG_FLOAT, t3, &Krr[2])
+LOG_ADD(LOG_FLOAT, t4, &Krr[3])
+LOG_GROUP_STOP(Kr)
+
+LOG_GROUP_START(K)
+LOG_ADD(LOG_FLOAT, t1, &Kx[0])
+LOG_ADD(LOG_FLOAT, t2, &Kx[1])
+LOG_ADD(LOG_FLOAT, t3, &Kx[2])
+LOG_ADD(LOG_FLOAT, t4, &Kx[3])
+LOG_GROUP_STOP(K)
+
