@@ -92,9 +92,13 @@ static int mode;
 static float referenceGlobal[3];
 
 static uint16_t limitThrust(int32_t value);
+void feedbackMultiply(float K[4][6], float x[6][1], float Kx[4][1]);
+void referenceMultiply(float Kr[4][3], float r[3][1], float Krr[4][1]);
 
 xSemaphoreHandle(modeGatekeeper) = 0;
 xSemaphoreHandle(referenceGatekeeper) = 0;
+
+
 /*static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
@@ -128,8 +132,8 @@ static void stabilizerTask(void* param)
   uint32_t lastWakeTime;
   static float states[6] = {0,0,0,0,0,0};
   static float thrustArray[4] = {0,0,0,0};
-  static float Kx = 0;
-  static float Krr = 0;
+  static float Kx[4] = {0,0,0,0};
+  static float Krr[4] = {0,0,0,0};
   static float referenceLocal[3] = {0,0,0};
   static float K[4][6] = {
 		  {-15.8114, -0.0561, -15.8114, -0.0569, 0.0050, 0.5000},
@@ -161,7 +165,7 @@ static void stabilizerTask(void* param)
 	    	states[5] =	gyro.z;
 
 			if(xSemaphoreTake(referenceGatekeeper, M2T(0.5))){
-				referenceLocal = referenceGlobal;
+				memcpy(referenceLocal, referenceGlobal, size_of(referenceGlobal));
 				xSemaphoreGive(referenceGatekeeper);
 			}
 
@@ -190,17 +194,6 @@ static void stabilizerTask(void* param)
    }
 }
 
-static void refgenTask(void* param) {
-	systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
-		while(1)
-		{
-			vTaskDelay(M2T(10));
-			referenceGlobal[0] = 0;
-			referenceGlobal[1] = 0;
-			referenceGlobal[2] = 0;
-		}
-	}
-
 static void modeswitchTask(void* param)
 {
 	systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
@@ -214,6 +207,20 @@ static void modeswitchTask(void* param)
 
 	}
 }
+
+
+static void refgenTask(void* param) {
+	systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
+		while(1)
+		{
+			vTaskDelay(M2T(10));
+			referenceGlobal[0] = 0;
+			referenceGlobal[1] = 0;
+			referenceGlobal[2] = 0;
+		}
+	}
+
+
 
 void stabilizerInit(void)
 {
