@@ -90,6 +90,7 @@ uint32_t motorPowerM4;  // Motor 4 power output (16bit value used: 0 - 65535)
 static bool isInit;
 static int mode;
 static float referenceGlobal[3];
+static float thrustArray[4] = {0,0,0,0};
 
 static uint16_t limitThrust(int32_t value);
 void feedbackMultiply(float K[4][6], float x[6], float Kx[4]);
@@ -131,7 +132,6 @@ static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
   static float states[6] = {0,0,0,0,0,0};
-  static float thrustArray[4] = {0,0,0,0};
   static float Kx[4] = {0,0,0,0};
   static float Krr[4] = {0,0,0,0};
   static float referenceLocal[3] = {0,0,0};
@@ -318,3 +318,10 @@ LOG_ADD(LOG_INT32, m1, &motorPowerM1)
 LOG_ADD(LOG_INT32, m2, &motorPowerM2)
 LOG_ADD(LOG_INT32, m3, &motorPowerM3)
 LOG_GROUP_STOP(motor)
+
+LOG_GROUP_START(thrustArray)
+LOG_ADD(LOG_FLOAT, t1, &thrustArray[0])
+LOG_ADD(LOG_FLOAT, t2, &thrustArray[1])
+LOG_ADD(LOG_FLOAT, t3, &thrustArray[2])
+LOG_ADD(LOG_FLOAT, t4, &thrustArray[3])
+LOG_GROUP_STOP(thrustArray)
