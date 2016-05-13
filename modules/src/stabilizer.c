@@ -89,26 +89,17 @@ uint32_t motorPowerM4;  // Motor 4 power output (16bit value used: 0 - 65535)
 
 static bool isInit;
 static int mode;
-static float referenceGlobal[4];
+static float referenceGlobal[3];
 
 static uint16_t limitThrust(int32_t value);
 
 xSemaphoreHandle(modeGatekeeper) = 0;
-static void stabilizerTask(void* param)
+xSemaphoreHandle(referenceGatekeeper) = 0;
+/*static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
-  static float states[6] = {0,0,0,0,0,0};
-  static float K[4][6] = {
-		  {0,0,0,0,0,0},
-		  {0,0,0,0,0,0},
-		  {0,0,0,0,0,0},
-		  {0,0,0,0,0,0}};
 
-  static float K[4][6] = {
- 		  {0,0,0,0,0,0},
- 		  {0,0,0,0,0,0},
- 		  {0,0,0,0,0,0},
- 		  {0,0,0,0,0,0}};
+
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
   lastWakeTime = xTaskGetTickCount ();
@@ -130,11 +121,27 @@ static void stabilizerTask(void* param)
 	  	motorsSetRatio(MOTOR_M2, 0);
 	  	}
    }
-}
+}*/
 
-/*static void stabilizerTask(void* param)
+static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
+  static float states[6] = {0,0,0,0,0,0};
+  static float thrustArray[4] = {0,0,0,0};
+  static float Kx = 0;
+  static float Krr = 0;
+  static float referenceLocal[3] = {0,0,0};
+  static float K[4][6] = {
+		  {-15.8114, -0.0561, -15.8114, -0.0569, 0.0050, 0.5000},
+		  {-15.8114, -0.0561, 15.8114, 0.0569, -0.0050, -0.5000},
+		  {15.8114, 0.0561, 15.8114, 0.0569, 0.0050, 0.5000},
+		  {15.8114, 0.0561, -15.8114, -0.0569, -0.0050, -0.5000}};
+
+  static float Kr[4][3] = {
+ 		  {-15.8114, -15.8114, 0.5000},
+		  {-15.8114, 15.8114, -0.5000},
+		  {15.8114, 15.8114, 0.5000},
+		  {15.8114, -15.8114, -0.5000}};
 
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
@@ -146,27 +153,51 @@ static void stabilizerTask(void* param)
 	    if (imu6IsCalibrated()) {
 	    	sensfusion6UpdateQ(gyro.x, gyro.y, gyro.z, acc.x, acc.y, acc.z, ATTITUDE_UPDATE_DT);
 	    	sensfusion6GetEulerRPY(&eulerRollActual, &eulerPitchActual, &eulerYawActual);
+	    	states[0] = eulerRollActual;
+	    	states[1] = gyro.x;
+	    	states[2] = eulerPitchActual;
+	    	states[3] = gyro.y;
+	    	states[4] =	eulerPitchActual;
+	    	states[5] =	gyro.z;
 
-			accWZ = sensfusion6GetAccZWithoutGravity(acc.x, acc.y, acc.z);
+			if(xSemaphoreTake(referenceGatekeeper, M2T(0.5))){
+				referenceLocal = referenceGlobal;
+				xSemaphoreGive(referenceGatekeeper);
+			}
+
+	    	Kx = feedbackMultiply(K, states, Kx);
+	    	Krr = referenceMultiply(Kr, referenceLocal, Krr);
+	    	thrustArray = Krr - Kx;
+
+
+		  	motorPowerM1 = limitThrust(fabs(thrustArray[0]));
+		  	motorPowerM2 = limitThrust(fabs(thrustArray[1]));
+		  	motorPowerM3 = limitThrust(fabs(thrustArray[2]));
+		  	motorPowerM4 = limitThrust(fabs(thrustArray[3]));
+
+		  	motorsSetRatio(MOTOR_M1, motorPowerM1);
+		  	motorsSetRatio(MOTOR_M2, motorPowerM2);
+		  	motorsSetRatio(MOTOR_M3, motorPowerM3);
+		  	motorsSetRatio(MOTOR_M4, motorPowerM4);
+
+	    			//accWZ = sensfusion6GetAccZWithoutGravity(acc.x, acc.y, acc.z);
 
 			// Estimate speed from acc (drifts)
-        	velocityZ += deadband(accWZ, vAccDeadband) * FUSION_UPDATE_DT * G;
-        	velocityZ *= velZAlpha;
+        	//velocityZ += deadband(accWZ, vAccDeadband) * FUSION_UPDATE_DT * G;
+        	//velocityZ *= velZAlpha;
 
 	  	}
    }
-}*/
+}
 
 static void refgenTask(void* param) {
-	{
-		systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
+	systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
 		while(1)
 		{
 			vTaskDelay(M2T(10));
 			referenceGlobal[0] = 0;
 			referenceGlobal[1] = 0;
 			referenceGlobal[2] = 0;
-			referenceGlobal[3] = 0;
 		}
 	}
 
@@ -197,8 +228,8 @@ void stabilizerInit(void)
   referenceGlobal[0] = 0;
   referenceGlobal[1] = 0;
   referenceGlobal[2] = 0;
-  referenceGlobal[3] = 0;
   modeGatekeeper = xSemaphoreCreateMutex();
+  referenceGatekeeper = xSemaphoreCreateMutex();
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
   xTaskCreate(modeswitchTask, MODESWITCH_TASK_NAME,
@@ -227,7 +258,7 @@ static uint16_t limitThrust(int32_t value)
 }
 
 /* Perform matrix multiplication in the LQ feedback Kx = K*x. */
-void feedbackMultiply(double K[4][6], double x[6][1], double Kx[4][1]) {
+void feedbackMultiply(float K[4][6], float x[6][1], float Kx[4][1]) {
     int i,j,k;
     for (i=0; i<4; i++) {
         for (j=0; j<1; j++) {
@@ -239,7 +270,7 @@ void feedbackMultiply(double K[4][6], double x[6][1], double Kx[4][1]) {
 }
 
 /* Perform matrix multiplication for the reference gain Krr = Kr*r. */
-void referenceMultiply(double Kr[4][3], double r[3][1], double Krr[4][1]) {
+void referenceMultiply(float Kr[4][3], float r[3][1], float Krr[4][1]) {
     int i,j,k;
     for (i=0; i<4; i++) {
         for (j=0; j<1; j++) {
