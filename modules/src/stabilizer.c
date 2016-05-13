@@ -89,6 +89,7 @@ uint32_t motorPowerM4;  // Motor 4 power output (16bit value used: 0 - 65535)
 
 static bool isInit;
 static int mode;
+static float referenceGlobal[4];
 
 static uint16_t limitThrust(int32_t value);
 
@@ -96,7 +97,18 @@ xSemaphoreHandle(modeGatekeeper) = 0;
 static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
+  static float states[6] = {0,0,0,0,0,0};
+  static float K[4][6] = {
+		  {0,0,0,0,0,0},
+		  {0,0,0,0,0,0},
+		  {0,0,0,0,0,0},
+		  {0,0,0,0,0,0}};
 
+  static float K[4][6] = {
+ 		  {0,0,0,0,0,0},
+ 		  {0,0,0,0,0,0},
+ 		  {0,0,0,0,0,0},
+ 		  {0,0,0,0,0,0}};
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
   lastWakeTime = xTaskGetTickCount ();
@@ -145,19 +157,31 @@ static void stabilizerTask(void* param)
    }
 }*/
 
+static void refgenTask(void* param) {
+	{
+		systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
+		while(1)
+		{
+			vTaskDelay(M2T(10));
+			referenceGlobal[0] = 0;
+			referenceGlobal[1] = 0;
+			referenceGlobal[2] = 0;
+			referenceGlobal[3] = 0;
+		}
+	}
+
 static void modeswitchTask(void* param)
 {
 	systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
+	while(1)
+	{
+		vTaskDelay(M2T(5000));
+		if(xSemaphoreTake(modeGatekeeper, M2T(1))){
+			mode = !mode;
+			xSemaphoreGive(modeGatekeeper);
+		}
 
-  while(1)
-  {
-	  vTaskDelay(M2T(5000));
-	  if(xSemaphoreTake(modeGatekeeper, M2T(1))){
-		  mode = !mode;
-		  xSemaphoreGive(modeGatekeeper);
-	  }
-
-  }
+	}
 }
 
 void stabilizerInit(void)
@@ -170,11 +194,17 @@ void stabilizerInit(void)
   sensfusion6Init();
   attitudeControllerInit();
   mode = 0;
+  referenceGlobal[0] = 0;
+  referenceGlobal[1] = 0;
+  referenceGlobal[2] = 0;
+  referenceGlobal[3] = 0;
   modeGatekeeper = xSemaphoreCreateMutex();
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
   xTaskCreate(modeswitchTask, MODESWITCH_TASK_NAME,
                 MODESWITCH_TASK_STACKSIZE, NULL, MODESWITCH_TASK_PRI, NULL);
+  xTaskCreate(refgenTask, REFGEN_TASK_NAME,
+                REFGEN_TASK_STACKSIZE, NULL, REFGEN_TASK_PRI, NULL);
 
   isInit = true;
 }
@@ -209,9 +239,9 @@ void feedbackMultiply(double K[4][6], double x[6][1], double Kx[4][1]) {
 }
 
 /* Perform matrix multiplication for the reference gain Krr = Kr*r. */
-void referenceMultiply(double Kr[3][3], double r[3][1], double Krr[3][1]) {
+void referenceMultiply(double Kr[4][3], double r[3][1], double Krr[4][1]) {
     int i,j,k;
-    for (i=0; i<3; i++) {
+    for (i=0; i<4; i++) {
         for (j=0; j<1; j++) {
             for (k=0; k<3; k++) {
                 Krr[i][j] += Kr[i][k] * r[k][j];
