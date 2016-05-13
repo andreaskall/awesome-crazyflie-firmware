@@ -64,12 +64,12 @@
 
 
 // Barometer/ Altitude hold stuff
-static float accWZ     = 0.0; // Acceleration Without gravity along Z axis (G).
-static float accMAG    = 0.0; // Acceleration magnitude
-static float velocityZ = 0.0; // Vertical speed (world frame) integrated from vertical acceleration (m/s)
+//static float accWZ     = 0.0; // Acceleration Without gravity along Z axis (G).
+//static float accMAG    = 0.0; // Acceleration magnitude
+//static float velocityZ = 0.0; // Vertical speed (world frame) integrated from vertical acceleration (m/s)
 
-static float vAccDeadband = 0.04; // Vertical acceleration deadband
-static float velZAlpha = 0.995;   // Blending factor to avoid vertical speed to accumulate error
+//static float vAccDeadband = 0.04; // Vertical acceleration deadband
+//static float velZAlpha = 0.995;   // Blending factor to avoid vertical speed to accumulate error
 
 
 static Axis3f gyro; // Gyro axis data in deg/s
@@ -165,7 +165,7 @@ static void stabilizerTask(void* param)
 	    	states[5] =	gyro.z;
 
 			if(xSemaphoreTake(referenceGatekeeper, M2T(0.5))){
-				memcpy(referenceLocal, referenceGlobal, size_of(referenceGlobal));
+				memcpy(referenceLocal, referenceGlobal, sizeof(referenceGlobal));
 				xSemaphoreGive(referenceGatekeeper);
 			}
 
