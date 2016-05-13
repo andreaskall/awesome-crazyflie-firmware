@@ -169,9 +169,12 @@ static void stabilizerTask(void* param)
 				xSemaphoreGive(referenceGatekeeper);
 			}
 
-	    	Kx = feedbackMultiply(K, states, Kx);
-	    	Krr = referenceMultiply(Kr, referenceLocal, Krr);
-	    	thrustArray = Krr - Kx;
+	    	feedbackMultiply(K, states, Kx);
+	    	referenceMultiply(Kr, referenceLocal, Krr);
+	    	thrustArray[0] = Krr[0] - Kx[0];
+	    	thrustArray[1] = Krr[1] - Kx[1];
+	    	thrustArray[2] = Krr[2] - Kx[2];
+	    	thrustArray[3] = Krr[3] - Kx[3];
 
 
 		  	motorPowerM1 = limitThrust(fabs(thrustArray[0]));
