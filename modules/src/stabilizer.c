@@ -141,6 +141,7 @@ static void stabilizerTask(void* param)
 		  {15.8114, 0.0561, -15.8114, -0.0569, 0.0050, 0.5000},
 		  {15.8114, 0.0561, 15.8114, 0.0569, -0.0050, -0.5000}};
 
+
   static float Kr[4][3] = {
  		  {-15.8114, 15.8114, 0.5000},
 		  {-15.8114, -15.8114, -0.5000},
@@ -157,12 +158,12 @@ static void stabilizerTask(void* param)
 	    if (imu6IsCalibrated()) {
 	    	sensfusion6UpdateQ(gyro.x, gyro.y, gyro.z, acc.x, acc.y, acc.z, ATTITUDE_UPDATE_DT);
 	    	sensfusion6GetEulerRPY(&eulerRollActual, &eulerPitchActual, &eulerYawActual);
-	    	states[0] = eulerRollActual;
-	    	states[1] = gyro.x;
-	    	states[2] = eulerPitchActual;
-	    	states[3] = gyro.y;
-	    	states[4] =	eulerPitchActual;
-	    	states[5] =	gyro.z;
+	    	states[0] = eulerRollActual*(3.14/180);
+	    	states[1] = gyro.x*(3.14/180);
+	    	states[2] = eulerPitchActual*(3.14/180);
+	    	states[3] = gyro.y*(3.14/180);
+	    	states[4] =	eulerPitchActual*(3.14/180);
+	    	states[5] =	gyro.z*(3.14/180);
 
 	    	commanderGetThrust(&actuatorThrust);
 
@@ -186,10 +187,11 @@ static void stabilizerTask(void* param)
 	    		}
 	    	}
 	    	*/
-		  	motorPowerM1 = limitThrust(thrustArray[0]+actuatorThrust);
-		  	motorPowerM2 = limitThrust(thrustArray[1]+actuatorThrust);
-		  	motorPowerM3 = limitThrust(thrustArray[2]+actuatorThrust);
-		  	motorPowerM4 = limitThrust(thrustArray[3]+actuatorThrust);
+	    	float gain = 111228;
+		  	motorPowerM1 = limitThrust(gain*(thrustArray[0]+actuatorThrust));
+		  	motorPowerM2 = limitThrust(gain*(thrustArray[1]+actuatorThrust));
+		  	motorPowerM3 = limitThrust(gain*(thrustArray[2]+actuatorThrust));
+		  	motorPowerM4 = limitThrust(gain*(thrustArray[3]+actuatorThrust));
 
 		  	motorsSetRatio(MOTOR_M1, motorPowerM1);
 		  	motorsSetRatio(MOTOR_M2, motorPowerM2);
