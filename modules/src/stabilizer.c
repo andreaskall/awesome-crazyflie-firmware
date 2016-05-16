@@ -136,16 +136,16 @@ static void stabilizerTask(void* param)
   uint32_t lastWakeTime;
   static float referenceLocal[3] = {0,0,0};
   static float K[4][6] = {
-		  {-15.8114, -0.0561, -15.8114, -0.0569, 0.0050, 0.5000},
-		  {-15.8114, -0.0561, 15.8114, 0.0569, -0.0050, -0.5000},
-		  {15.8114, 0.0561, 15.8114, 0.0569, 0.0050, 0.5000},
-		  {15.8114, 0.0561, -15.8114, -0.0569, -0.0050, -0.5000}};
+		  {-15.8114, -0.0561, 15.8114, 0.0569, 0.0050, 0.5000},
+		  {-15.8114, -0.0561, -15.8114, -0.0569, -0.0050, -0.5000},
+		  {15.8114, 0.0561, -15.8114, -0.0569, 0.0050, 0.5000},
+		  {15.8114, 0.0561, 15.8114, 0.0569, -0.0050, -0.5000}};
 
   static float Kr[4][3] = {
- 		  {-15.8114, -15.8114, 0.5000},
-		  {-15.8114, 15.8114, -0.5000},
-		  {15.8114, 15.8114, 0.5000},
-		  {15.8114, -15.8114, -0.5000}};
+ 		  {-15.8114, 15.8114, 0.5000},
+		  {-15.8114, -15.8114, -0.5000},
+		  {15.8114, -15.8114, 0.5000},
+		  {15.8114, 15.8114, -0.5000}};
 
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
@@ -164,6 +164,9 @@ static void stabilizerTask(void* param)
 	    	states[4] =	eulerPitchActual;
 	    	states[5] =	gyro.z;
 
+	    	commanderGetThrust(&actuatorThrust);
+
+
 			if(xSemaphoreTake(referenceGatekeeper, M2T(0.5))){
 				memcpy(referenceLocal, referenceGlobal, sizeof(referenceGlobal));
 				xSemaphoreGive(referenceGatekeeper);
@@ -176,11 +179,16 @@ static void stabilizerTask(void* param)
 	    	thrustArray[2] = Krr[2] - Kx[2];
 	    	thrustArray[3] = Krr[3] - Kx[3];
 
-
-		  	motorPowerM1 = limitThrust(fabs(500*thrustArray[0]));
-		  	motorPowerM2 = limitThrust(fabs(500*thrustArray[1]));
-		  	motorPowerM3 = limitThrust(fabs(500*thrustArray[2]));
-		  	motorPowerM4 = limitThrust(fabs(500*thrustArray[3]));
+	    	int i;
+	    	for(i=0; i<4;i++){
+	    		if (thrustArray[i] < 0){
+	    			thrustArray[i] = 0;
+	    		}
+	    	}
+		  	motorPowerM1 = limitThrust(fabs(50*thrustArray[0]+(actuatorThrust)));
+		  	motorPowerM2 = limitThrust(fabs(50*thrustArray[1]+(actuatorThrust)));
+		  	motorPowerM3 = limitThrust(fabs(50*thrustArray[2]+(actuatorThrust)));
+		  	motorPowerM4 = limitThrust(fabs(50*thrustArray[3]+(actuatorThrust)));
 
 		  	motorsSetRatio(MOTOR_M1, motorPowerM1);
 		  	motorsSetRatio(MOTOR_M2, motorPowerM2);
