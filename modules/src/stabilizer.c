@@ -178,17 +178,18 @@ static void stabilizerTask(void* param)
 	    	thrustArray[1] = Krr[1] - Kx[1];
 	    	thrustArray[2] = Krr[2] - Kx[2];
 	    	thrustArray[3] = Krr[3] - Kx[3];
-
+	    	/*
 	    	int i;
 	    	for(i=0; i<4;i++){
 	    		if (thrustArray[i] < 0){
 	    			thrustArray[i] = 0;
 	    		}
 	    	}
-		  	motorPowerM1 = limitThrust(fabs(50*thrustArray[0]+(actuatorThrust)));
-		  	motorPowerM2 = limitThrust(fabs(50*thrustArray[1]+(actuatorThrust)));
-		  	motorPowerM3 = limitThrust(fabs(50*thrustArray[2]+(actuatorThrust)));
-		  	motorPowerM4 = limitThrust(fabs(50*thrustArray[3]+(actuatorThrust)));
+	    	*/
+		  	motorPowerM1 = limitThrust(thrustArray[0]+actuatorThrust);
+		  	motorPowerM2 = limitThrust(thrustArray[1]+actuatorThrust);
+		  	motorPowerM3 = limitThrust(thrustArray[2]+actuatorThrust);
+		  	motorPowerM4 = limitThrust(thrustArray[3]+actuatorThrust);
 
 		  	motorsSetRatio(MOTOR_M1, motorPowerM1);
 		  	motorsSetRatio(MOTOR_M2, motorPowerM2);
