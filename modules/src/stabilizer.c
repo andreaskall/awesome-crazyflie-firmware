@@ -136,17 +136,16 @@ static void stabilizerTask(void* param)
   uint32_t lastWakeTime;
   static float referenceLocal[3] = {0,0,0};
   static float K[4][6] = {
-		  {-15.8114, -0.0561, 15.8114, 0.0569, 0.0050, 0.5000},
-		  {-15.8114, -0.0561, -15.8114, -0.0569, -0.0050, -0.5000},
-		  {15.8114, 0.0561, -15.8114, -0.0569, 0.0050, 0.5000},
-		  {15.8114, 0.0561, 15.8114, 0.0569, -0.0050, -0.5000}};
-
+		  {-15.8114, -0.5031, 15.8114, 0.5032, 0.5000, 1.5811},
+		  {-15.8114, -0.5031, -15.8114, -0.5032, -0.5000, -1.5811},
+		  {15.8114, 0.5031, -15.8114, -0.5032, 0.5000, 1.5811},
+		  {15.8114, 0.5031, 15.8114, 0.5032, -0.5000, -1.5811}};
 
   static float Kr[4][3] = {
- 		  {-15.8114, 15.8114, 0.5000},
-		  {-15.8114, -15.8114, -0.5000},
-		  {15.8114, -15.8114, 0.5000},
-		  {15.8114, 15.8114, -0.5000}};
+ 		  {-15.8114, 15.8114, 1.5811},
+		  {-15.8114, -15.8114, -1.5811},
+		  {15.8114, -15.8114, 1.5811},
+		  {15.8114, 15.8114, -1.5811}};
 
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
@@ -169,7 +168,9 @@ static void stabilizerTask(void* param)
 
 
 			if(xSemaphoreTake(referenceGatekeeper, M2T(0.5))){
-				memcpy(referenceLocal, referenceGlobal, sizeof(referenceGlobal));
+				referenceLocal[0] = referenceGlobal[0];
+				referenceLocal[1] = referenceGlobal[1];
+				referenceLocal[2] = referenceGlobal[2];
 				xSemaphoreGive(referenceGatekeeper);
 			}
 
@@ -187,7 +188,7 @@ static void stabilizerTask(void* param)
 	    		}
 	    	}
 	    	*/
-	    	float gain = 111228;
+	    	float gain = 3277;
 		  	motorPowerM1 = limitThrust(gain*(thrustArray[0]+actuatorThrust));
 		  	motorPowerM2 = limitThrust(gain*(thrustArray[1]+actuatorThrust));
 		  	motorPowerM3 = limitThrust(gain*(thrustArray[2]+actuatorThrust));
@@ -227,10 +228,16 @@ static void refgenTask(void* param) {
 	systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
 		while(1)
 		{
-			vTaskDelay(M2T(10));
-			referenceGlobal[0] = 0;
-			referenceGlobal[1] = 0;
-			referenceGlobal[2] = 0;
+			vTaskDelay(F2T(250));
+			if(xSemaphoreTake(referenceGatekeeper, M2T(1))){
+				commanderGetRPY(&referenceGlobal[0], &referenceGlobal[1], &referenceGlobal[2]);
+				commanderGetThrust(&actuatorThrust);
+				xSemaphoreGive(referenceGatekeeper);
+			}
+
+
+
+
 		}
 	}
 
