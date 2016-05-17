@@ -142,28 +142,28 @@ static void stabilizerTask(void* param)
 
   // "Working" values
   /*
-  static float roll_pitch = 0.4;
-  static float roll_pitch_dot = 0.005;
-  static float yaw_gain = 0.0005;
-  static float yaw_dot_gain = 0.05;
+  static float roll_pitch = 0.6;
+  static float roll_pitch_dot = 0.0006;
+  static float yaw_gain = 0.0001;
+  static float yaw_dot_gain = 0.02;
   */
-  static float roll_pitch = 0.4;
-  static float roll_pitch_dot = 0.005;
+  static float roll_pitch = 1;
+  static float roll_pitch_dot = 0;
   static float yaw_gain = 0;
   static float yaw_dot_gain = 0;
 
 
   float K[4][6] = {
-		  {-roll_pitch, -roll_pitch_dot,	 roll_pitch,  	 roll_pitch_dot,  roll_pitch_dot,  yaw_dot_gain},
-		  {-roll_pitch, -roll_pitch_dot, 	-roll_pitch, 	-roll_pitch_dot, -roll_pitch_dot, -yaw_dot_gain},
-		  { roll_pitch,  roll_pitch_dot,	-roll_pitch, 	-roll_pitch_dot,  roll_pitch_dot,  yaw_dot_gain},
-		  { roll_pitch,	 roll_pitch_dot,	 roll_pitch,	 roll_pitch_dot, -roll_pitch_dot, -yaw_dot_gain}};
+		  {-roll_pitch, -roll_pitch_dot,	 roll_pitch,  	 roll_pitch_dot,  yaw_gain,  yaw_dot_gain},
+		  {-roll_pitch, -roll_pitch_dot, 	-roll_pitch, 	-roll_pitch_dot, -yaw_gain, -yaw_dot_gain},
+		  { roll_pitch,  roll_pitch_dot,	-roll_pitch, 	-roll_pitch_dot,  yaw_gain,  yaw_dot_gain},
+		  { roll_pitch,	 roll_pitch_dot,	 roll_pitch,	 roll_pitch_dot, -yaw_gain, -yaw_dot_gain}};
 
   float Kr[4][3] = {
-		  {-roll_pitch,  roll_pitch,  yaw_gain},
-		  {-roll_pitch, -roll_pitch, -yaw_gain},
-		  { roll_pitch, -roll_pitch,  yaw_gain},
-		  { roll_pitch,  roll_pitch, -yaw_gain}};
+		  {-roll_pitch,  roll_pitch,  yaw_dot_gain},
+		  {-roll_pitch, -roll_pitch, -yaw_dot_gain},
+		  { roll_pitch, -roll_pitch,  yaw_dot_gain},
+		  { roll_pitch,  roll_pitch, -yaw_dot_gain}};
 
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
