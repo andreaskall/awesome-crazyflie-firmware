@@ -24,7 +24,6 @@
  *
  */
 #include <math.h>
-
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -87,6 +86,11 @@ uint32_t motorPowerM2;  // Motor 2 power output (16bit value used: 0 - 65535)
 uint32_t motorPowerM3;  // Motor 3 power output (16bit value used: 0 - 65535)
 uint32_t motorPowerM4;  // Motor 4 power output (16bit value used: 0 - 65535)
 
+float motor1_PWM;
+float motor2_PWM;
+float motor3_PWM;
+float motor4_PWM;
+
 static bool isInit;
 static int mode;
 static float referenceGlobal[3];
@@ -135,17 +139,31 @@ static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
   static float referenceLocal[3] = {0,0,0};
-  static float K[4][6] = {
-		  {-15.8114, -0.5031, 15.8114, 0.5032, 0.5000, 1.5811},
-		  {-15.8114, -0.5031, -15.8114, -0.5032, -0.5000, -1.5811},
-		  {15.8114, 0.5031, -15.8114, -0.5032, 0.5000, 1.5811},
-		  {15.8114, 0.5031, 15.8114, 0.5032, -0.5000, -1.5811}};
 
-  static float Kr[4][3] = {
- 		  {-15.8114, 15.8114, 1.5811},
-		  {-15.8114, -15.8114, -1.5811},
-		  {15.8114, -15.8114, 1.5811},
-		  {15.8114, 15.8114, -1.5811}};
+  // "Working" values
+  /*
+  static float roll_pitch = 0.4;
+  static float roll_pitch_dot = 0.005;
+  static float yaw_gain = 0.0005;
+  static float yaw_dot_gain = 0.05;
+  */
+  static float roll_pitch = 0.4;
+  static float roll_pitch_dot = 0.005;
+  static float yaw_gain = 0;
+  static float yaw_dot_gain = 0;
+
+
+  float K[4][6] = {
+		  {-roll_pitch, -roll_pitch_dot,	 roll_pitch,  	 roll_pitch_dot,  roll_pitch_dot,  yaw_dot_gain},
+		  {-roll_pitch, -roll_pitch_dot, 	-roll_pitch, 	-roll_pitch_dot, -roll_pitch_dot, -yaw_dot_gain},
+		  { roll_pitch,  roll_pitch_dot,	-roll_pitch, 	-roll_pitch_dot,  roll_pitch_dot,  yaw_dot_gain},
+		  { roll_pitch,	 roll_pitch_dot,	 roll_pitch,	 roll_pitch_dot, -roll_pitch_dot, -yaw_dot_gain}};
+
+  float Kr[4][3] = {
+		  {-roll_pitch,  roll_pitch,  yaw_gain},
+		  {-roll_pitch, -roll_pitch, -yaw_gain},
+		  { roll_pitch, -roll_pitch,  yaw_gain},
+		  { roll_pitch,  roll_pitch, -yaw_gain}};
 
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
@@ -157,14 +175,12 @@ static void stabilizerTask(void* param)
 	    if (imu6IsCalibrated()) {
 	    	sensfusion6UpdateQ(gyro.x, gyro.y, gyro.z, acc.x, acc.y, acc.z, ATTITUDE_UPDATE_DT);
 	    	sensfusion6GetEulerRPY(&eulerRollActual, &eulerPitchActual, &eulerYawActual);
-	    	states[0] = eulerRollActual*(3.14/180);
-	    	states[1] = gyro.x*(3.14/180);
-	    	states[2] = eulerPitchActual*(3.14/180);
-	    	states[3] = gyro.y*(3.14/180);
-	    	states[4] =	eulerPitchActual*(3.14/180);
-	    	states[5] =	gyro.z*(3.14/180);
-
-	    	commanderGetThrust(&actuatorThrust);
+	    	states[0] = eulerRollActual*(M_PI/180);
+	    	states[1] = gyro.x*(M_PI/180);
+	    	states[2] = eulerPitchActual*(M_PI/180);
+	    	states[3] = gyro.y*(M_PI/180);
+	    	states[4] =	eulerPitchActual*(M_PI/180);
+	    	states[5] =	gyro.z*(M_PI/180);
 
 
 			if(xSemaphoreTake(referenceGatekeeper, M2T(0.5))){
@@ -188,11 +204,15 @@ static void stabilizerTask(void* param)
 	    		}
 	    	}
 	    	*/
-	    	float gain = 3277;
-		  	motorPowerM1 = limitThrust(gain*(thrustArray[0]+actuatorThrust));
-		  	motorPowerM2 = limitThrust(gain*(thrustArray[1]+actuatorThrust));
-		  	motorPowerM3 = limitThrust(gain*(thrustArray[2]+actuatorThrust));
-		  	motorPowerM4 = limitThrust(gain*(thrustArray[3]+actuatorThrust));
+	    	motor1_PWM = -761.12*thrustArray[0]*thrustArray[0] + 14905.46*thrustArray[0] + 113.57;
+	    	motor2_PWM = -761.12*thrustArray[1]*thrustArray[1] + 14905.46*thrustArray[1] + 113.57;
+	    	motor3_PWM = -761.12*thrustArray[2]*thrustArray[2] + 14905.46*thrustArray[2] + 113.57;
+	    	motor4_PWM = -761.12*thrustArray[3]*thrustArray[3] + 14905.46*thrustArray[3] + 113.57;
+
+	    	motorPowerM1 = limitThrust(motor1_PWM + actuatorThrust);
+		  	motorPowerM2 = limitThrust(motor2_PWM + actuatorThrust);
+		  	motorPowerM3 = limitThrust(motor3_PWM + actuatorThrust);
+		  	motorPowerM4 = limitThrust(motor4_PWM + actuatorThrust);
 
 		  	motorsSetRatio(MOTOR_M1, motorPowerM1);
 		  	motorsSetRatio(MOTOR_M2, motorPowerM2);
@@ -231,6 +251,10 @@ static void refgenTask(void* param) {
 			vTaskDelay(F2T(250));
 			if(xSemaphoreTake(referenceGatekeeper, M2T(1))){
 				commanderGetRPY(&referenceGlobal[0], &referenceGlobal[1], &referenceGlobal[2]);
+				referenceGlobal[0] *= (M_PI/180);
+				referenceGlobal[1] *= (M_PI/180);
+				referenceGlobal[2] *= (M_PI/180);
+
 				commanderGetThrust(&actuatorThrust);
 				xSemaphoreGive(referenceGatekeeper);
 			}
@@ -344,6 +368,7 @@ LOG_ADD(LOG_FLOAT, t1, &thrustArray[0])
 LOG_ADD(LOG_FLOAT, t2, &thrustArray[1])
 LOG_ADD(LOG_FLOAT, t3, &thrustArray[2])
 LOG_ADD(LOG_FLOAT, t4, &thrustArray[3])
+LOG_ADD(LOG_FLOAT, ctrThrust, &actuatorThrust)
 LOG_GROUP_STOP(thrustArray)
 
 LOG_GROUP_START(Kr)
@@ -358,5 +383,12 @@ LOG_ADD(LOG_FLOAT, t1, &Kx[0])
 LOG_ADD(LOG_FLOAT, t2, &Kx[1])
 LOG_ADD(LOG_FLOAT, t3, &Kx[2])
 LOG_ADD(LOG_FLOAT, t4, &Kx[3])
+LOG_GROUP_STOP(K)
+
+LOG_GROUP_START(PWM)
+LOG_ADD(LOG_FLOAT, motor1, &motor1_PWM)
+LOG_ADD(LOG_FLOAT, motor2, &motor2_PWM)
+LOG_ADD(LOG_FLOAT, motor3, &motor3_PWM)
+LOG_ADD(LOG_FLOAT, motor4, &motor4_PWM)
 LOG_GROUP_STOP(K)
 
