@@ -102,10 +102,10 @@ static float Kx[4] = {0,0,0,0};
 static float Krr[4] = {0,0,0,0};
 
 // K and Kr matrix values
-static float roll_pitch = 0.6;
-static float roll_pitch_dot = 0.0006;
-static float yaw_gain = 0.0001;
-static float yaw_dot_gain = 0.02;
+static float roll_pitch = 0.2;
+static float roll_pitch_dot = 0.1;
+static float yaw_gain = 0;
+static float yaw_dot_gain = 0;
 
 static uint16_t limitThrust(int32_t value);
 void feedbackMultiply(float K[4][6], float x[6], float Kx[4]);
@@ -115,56 +115,18 @@ xSemaphoreHandle(modeGatekeeper) = 0;
 xSemaphoreHandle(referenceGatekeeper) = 0;
 
 
-/*static void stabilizerTask(void* param)
-{
-  uint32_t lastWakeTime;
-
-
-  //Wait for the system to be fully started to start stabilization loop
-  systemWaitStart();
-  lastWakeTime = xTaskGetTickCount ();
-  int modeLocal = 0;
-  while(1) {
-	  	vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
-	  	if(xSemaphoreTake(modeGatekeeper, M2T(1))) {
-	  		modeLocal = mode;
-	  		xSemaphoreGive(modeGatekeeper);
-	  	}
-
-	  	if(modeLocal == 1) {
-	  	motorPowerM2 = limitThrust(fabs(32000*30/180.0));
-	  	motorsSetRatio(MOTOR_M2, motorPowerM2);
-        motorsSetRatio(MOTOR_M1, 0);
-	  	}else {
-	  	motorPowerM1 = limitThrust(fabs(32000*20/180.0));
-        motorsSetRatio(MOTOR_M1, motorPowerM1);
-	  	motorsSetRatio(MOTOR_M2, 0);
-	  	}
-   }
-}*/
 
 static void stabilizerTask(void* param)
 {
   uint32_t lastWakeTime;
   static float referenceLocal[3] = {0,0,0};
 
-  // "Working" values
-  /*
-  static float roll_pitch = 0.6;
-  static float roll_pitch_dot = 0.0006;
-  static float yaw_gain = 0.0001;
-  static float yaw_dot_gain = 0.02;
-  */
-
-
-
-
 
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
   lastWakeTime = xTaskGetTickCount ();
   while(1) {
-	  	vTaskDelayUntil(&lastWakeTime, F2T(IMU_UPDATE_FREQ)); // 500Hz
+	  	vTaskDelayUntil(&lastWakeTime, F2T(1000)); // 500Hz
 	    imu9Read(&gyro, &acc, &mag);
 
 	    if (imu6IsCalibrated()) {
@@ -195,10 +157,10 @@ static void stabilizerTask(void* param)
 	    	thrustArray[2] = Krr[2] - Kx[2];
 	    	thrustArray[3] = Krr[3] - Kx[3];
 
-	    	motor1_PWM = -761.12*thrustArray[0]*thrustArray[0] + 14905.46*thrustArray[0] + 113.57;
-	    	motor2_PWM = -761.12*thrustArray[1]*thrustArray[1] + 14905.46*thrustArray[1] + 113.57;
-	    	motor3_PWM = -761.12*thrustArray[2]*thrustArray[2] + 14905.46*thrustArray[2] + 113.57;
-	    	motor4_PWM = -761.12*thrustArray[3]*thrustArray[3] + 14905.46*thrustArray[3] + 113.57;
+	    	motor1_PWM = -76124.69*thrustArray[0]*thrustArray[0] + 149054.6*thrustArray[0] + 1135.7;
+	    	motor2_PWM = -76124.69*thrustArray[1]*thrustArray[1] + 149054.6*thrustArray[1] + 1135.7;
+	    	motor3_PWM = -76124.69*thrustArray[2]*thrustArray[2] + 149054.6*thrustArray[2] + 1135.7;
+	    	motor4_PWM = -76124.69*thrustArray[3]*thrustArray[3] + 149054.6*thrustArray[3] + 1135.7;
 
 	    	motorPowerM1 = limitThrust(motor1_PWM + actuatorThrust);
 		  	motorPowerM2 = limitThrust(motor2_PWM + actuatorThrust);
@@ -225,13 +187,13 @@ static void modeswitchTask(void* param)
 	systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
 	while(1)
 	{
-		vTaskDelay(M2T(1000));
+		vTaskDelay(M2T(2000));
 		if(xSemaphoreTake(modeGatekeeper, M2T(1))){
 			mode = !mode;
 			K[0][0] = -roll_pitch; K[1][0] = -roll_pitch; K[2][0] = roll_pitch; K[3][0] = roll_pitch;
 			K[0][1] = -roll_pitch_dot; K[1][1] = -roll_pitch_dot; K[2][1] = roll_pitch_dot; K[3][1] = roll_pitch_dot;
 			K[0][2] = roll_pitch; K[1][2] = -roll_pitch; K[2][2] = -roll_pitch; K[3][2] = roll_pitch;
-			K[0][3] = roll_pitch_dot; K[1][3] = -roll_pitch_dot; K[2][3] = -roll_pitch_dot; K[3][3] = roll_pitch_dot;
+			K[0][3] = -roll_pitch_dot; K[1][3] = roll_pitch_dot; K[2][3] = roll_pitch_dot; K[3][3] = -roll_pitch_dot;
 			K[0][4] = yaw_gain; K[1][4] = -yaw_gain; K[2][4] = yaw_gain; K[3][4] = -yaw_gain;
 			K[0][5] = yaw_dot_gain; K[1][5] = -yaw_dot_gain; K[2][5] = yaw_dot_gain; K[3][5] = -yaw_dot_gain;
 
