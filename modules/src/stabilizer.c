@@ -104,8 +104,8 @@ static float Krr[4] = {0,0,0,0};
 // K and Kr matrix values
 static float roll_pitch = 0.07;
 static float roll_pitch_dot = 0.03;
-static float yaw_gain = 0.08;
-static float yaw_dot_gain = 0.005;
+static float yaw_gain = 0.0005;
+static float yaw_dot_gain = 0.02;
 
 static uint16_t limitThrust(int32_t value);
 void feedbackMultiply(float K[4][6], float x[6], float Kx[4]);
@@ -219,6 +219,7 @@ static void refgenTask(void* param) {
 				referenceGlobal[0] *= (M_PI/180);
 				referenceGlobal[1] *= (M_PI/180);
 				referenceGlobal[2] *= (M_PI/180);
+				referenceGlobal[2] = -referenceGlobal[2];
 
 				commanderGetThrust(&actuatorThrust);
 				xSemaphoreGive(referenceGatekeeper);
