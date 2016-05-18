@@ -194,8 +194,8 @@ static void modeswitchTask(void* param)
 			K[0][1] = -roll_pitch_dot; K[1][1] = -roll_pitch_dot; K[2][1] = roll_pitch_dot; K[3][1] = roll_pitch_dot;
 			K[0][2] = roll_pitch; K[1][2] = -roll_pitch; K[2][2] = -roll_pitch; K[3][2] = roll_pitch;
 			K[0][3] = -roll_pitch_dot; K[1][3] = roll_pitch_dot; K[2][3] = roll_pitch_dot; K[3][3] = -roll_pitch_dot;
-			K[0][4] = -yaw_gain; K[1][4] = yaw_gain; K[2][4] = -yaw_gain; K[3][4] = yaw_gain;
-			K[0][5] = -yaw_dot_gain; K[1][5] = yaw_dot_gain; K[2][5] = -yaw_dot_gain; K[3][5] = yaw_dot_gain;
+			K[0][4] = yaw_gain; K[1][4] = -yaw_gain; K[2][4] = yaw_gain; K[3][4] = -yaw_gain;
+			K[0][5] = yaw_dot_gain; K[1][5] = -yaw_dot_gain; K[2][5] = yaw_dot_gain; K[3][5] = -yaw_dot_gain;
 
 			Kr[0][0] = K[0][0]; Kr[1][0] = K[1][0]; Kr[2][0] = K[2][0]; Kr[3][0] = K[3][0];
 			Kr[0][1] = K[0][2]; Kr[1][1] = K[1][2]; Kr[2][1] = K[2][2]; Kr[3][1] = K[3][2];
@@ -219,7 +219,6 @@ static void refgenTask(void* param) {
 				referenceGlobal[0] *= (M_PI/180);
 				referenceGlobal[1] *= (M_PI/180);
 				referenceGlobal[2] *= (M_PI/180);
-				referenceGlobal[2] = -referenceGlobal[2];
 
 				commanderGetThrust(&actuatorThrust);
 				xSemaphoreGive(referenceGatekeeper);
