@@ -148,7 +148,7 @@ static void stabilizerTask(void* param)
   static float yaw_dot_gain = 0.02;
   */
   static float roll_pitch = 1;
-  static float roll_pitch_dot = 0;
+  static float roll_pitch_dot = 0.006;
   static float yaw_gain = 0;
   static float yaw_dot_gain = 0;
 
@@ -196,14 +196,7 @@ static void stabilizerTask(void* param)
 	    	thrustArray[1] = Krr[1] - Kx[1];
 	    	thrustArray[2] = Krr[2] - Kx[2];
 	    	thrustArray[3] = Krr[3] - Kx[3];
-	    	/*
-	    	int i;
-	    	for(i=0; i<4;i++){
-	    		if (thrustArray[i] < 0){
-	    			thrustArray[i] = 0;
-	    		}
-	    	}
-	    	*/
+
 	    	motor1_PWM = -761.12*thrustArray[0]*thrustArray[0] + 14905.46*thrustArray[0] + 113.57;
 	    	motor2_PWM = -761.12*thrustArray[1]*thrustArray[1] + 14905.46*thrustArray[1] + 113.57;
 	    	motor3_PWM = -761.12*thrustArray[2]*thrustArray[2] + 14905.46*thrustArray[2] + 113.57;
