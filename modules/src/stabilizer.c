@@ -96,8 +96,16 @@ static int mode;
 static float referenceGlobal[3];
 static float thrustArray[4] = {0,0,0,0};
 static float states[6] = {0,0,0,0,0,0};
+float K[4][6];
+float Kr[4][3];
 static float Kx[4] = {0,0,0,0};
 static float Krr[4] = {0,0,0,0};
+
+// K and Kr matrix values
+static float roll_pitch = 0.6;
+static float roll_pitch_dot = 0.0006;
+static float yaw_gain = 0.0001;
+static float yaw_dot_gain = 0.02;
 
 static uint16_t limitThrust(int32_t value);
 void feedbackMultiply(float K[4][6], float x[6], float Kx[4]);
@@ -147,23 +155,10 @@ static void stabilizerTask(void* param)
   static float yaw_gain = 0.0001;
   static float yaw_dot_gain = 0.02;
   */
-  static float roll_pitch = 1;
-  static float roll_pitch_dot = 0.006;
-  static float yaw_gain = 0;
-  static float yaw_dot_gain = 0;
 
 
-  float K[4][6] = {
-		  {-roll_pitch, -roll_pitch_dot,	 roll_pitch,  	 roll_pitch_dot,  yaw_gain,  yaw_dot_gain},
-		  {-roll_pitch, -roll_pitch_dot, 	-roll_pitch, 	-roll_pitch_dot, -yaw_gain, -yaw_dot_gain},
-		  { roll_pitch,  roll_pitch_dot,	-roll_pitch, 	-roll_pitch_dot,  yaw_gain,  yaw_dot_gain},
-		  { roll_pitch,	 roll_pitch_dot,	 roll_pitch,	 roll_pitch_dot, -yaw_gain, -yaw_dot_gain}};
 
-  float Kr[4][3] = {
-		  {-roll_pitch,  roll_pitch,  yaw_dot_gain},
-		  {-roll_pitch, -roll_pitch, -yaw_dot_gain},
-		  { roll_pitch, -roll_pitch,  yaw_dot_gain},
-		  { roll_pitch,  roll_pitch, -yaw_dot_gain}};
+
 
   //Wait for the system to be fully started to start stabilization loop
   systemWaitStart();
@@ -190,8 +185,11 @@ static void stabilizerTask(void* param)
 				xSemaphoreGive(referenceGatekeeper);
 			}
 
-	    	feedbackMultiply(K, states, Kx);
-	    	referenceMultiply(Kr, referenceLocal, Krr);
+			if(xSemaphoreTake(modeGatekeeper, M2T(1))){
+				feedbackMultiply(K, states, Kx);
+				referenceMultiply(Kr, referenceLocal, Krr);
+				xSemaphoreGive(modeGatekeeper);
+			}
 	    	thrustArray[0] = Krr[0] - Kx[0];
 	    	thrustArray[1] = Krr[1] - Kx[1];
 	    	thrustArray[2] = Krr[2] - Kx[2];
@@ -227,11 +225,23 @@ static void modeswitchTask(void* param)
 	systemWaitStart();		//Wait for the system to be fully started to start stabilization loop
 	while(1)
 	{
-		vTaskDelay(M2T(5000));
+		vTaskDelay(M2T(1000));
 		if(xSemaphoreTake(modeGatekeeper, M2T(1))){
 			mode = !mode;
+			K[0][0] = -roll_pitch; K[1][0] = -roll_pitch; K[2][0] = roll_pitch; K[3][0] = roll_pitch;
+			K[0][1] = -roll_pitch_dot; K[1][1] = -roll_pitch_dot; K[2][1] = roll_pitch_dot; K[3][1] = roll_pitch_dot;
+			K[0][2] = roll_pitch; K[1][2] = -roll_pitch; K[2][2] = -roll_pitch; K[3][2] = roll_pitch;
+			K[0][3] = roll_pitch_dot; K[1][3] = -roll_pitch_dot; K[2][3] = -roll_pitch_dot; K[3][3] = roll_pitch_dot;
+			K[0][4] = yaw_gain; K[1][4] = -yaw_gain; K[2][4] = yaw_gain; K[3][4] = -yaw_gain;
+			K[0][5] = yaw_dot_gain; K[1][5] = -yaw_dot_gain; K[2][5] = yaw_dot_gain; K[3][5] = -yaw_dot_gain;
+
+			Kr[0][0] = K[0][0]; Kr[1][0] = K[1][0]; Kr[2][0] = K[2][0]; Kr[3][0] = K[3][0];
+			Kr[0][1] = K[0][2]; Kr[1][1] = K[1][2]; Kr[2][1] = K[2][2]; Kr[3][1] = K[3][2];
+			Kr[0][2] = K[0][5]; Kr[1][2] = K[1][5]; Kr[2][2] = K[2][5]; Kr[3][2] = K[3][5];
+
 			xSemaphoreGive(modeGatekeeper);
 		}
+
 
 	}
 }
@@ -323,6 +333,15 @@ void referenceMultiply(float Kr[4][3], float r[3], float Krr[4]) {
         }
     }
 }
+
+
+PARAM_GROUP_START(conroller)
+PARAM_ADD(PARAM_FLOAT, roll_pitch, &roll_pitch)
+PARAM_ADD(PARAM_FLOAT, roll_pitch_dot, &roll_pitch_dot)
+PARAM_ADD(PARAM_FLOAT, yaw_gain, &yaw_gain)
+PARAM_ADD(PARAM_FLOAT, yaw_dot_gain, &yaw_dot_gain)
+PARAM_GROUP_STOP(controller)
+
 
 LOG_GROUP_START(stabilizer)
 LOG_ADD(LOG_FLOAT, roll, &eulerRollActual)
